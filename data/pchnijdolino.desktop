@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Pchnijdolino
+Exec=pchnijdolino
+Comment=Pchnijdolino
+Icon=pchnijdolino
+Terminal=false
+Categories=Game;ArcadeGame;

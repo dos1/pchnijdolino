@@ -48,8 +48,12 @@ struct GamestateResources {
 		int cloudspos;
 		float pos, speed;
 		int speedmod;
+		int timetospawn;
 
 		bool walking;
+
+		ALLEGRO_SAMPLE *clicks;
+		ALLEGRO_SAMPLE_INSTANCE *click;
 
 		bool up, down, left, right;
 
@@ -73,6 +77,7 @@ bool Say(struct Game *game, struct TM_Action *action, enum TM_ActionState state)
 	struct GamestateResources *data = TM_GetArg(action->arguments, 0);
 	if (state == TM_ACTIONSTATE_START) {
 		data->text = TM_GetArg(action->arguments, 1);
+		al_play_sample_instance(data->click);
 	}
 	return true;
 }
@@ -91,6 +96,7 @@ bool Start(struct Game *game, struct TM_Action *action, enum TM_ActionState stat
 
 		data->numpersons=0;
 		data->numpushers=0;
+		data->timetospawn = 30;
 
 		data->persons[data->numpersons].active = true;
 		data->persons[data->numpersons].r = rand()%255;
@@ -121,6 +127,7 @@ bool Start(struct Game *game, struct TM_Action *action, enum TM_ActionState stat
 		data->left = false;
 		data->right = false;
 
+		al_play_sample_instance(data->click);
 
 	}
 	return true;
@@ -241,7 +248,7 @@ void Gamestate_Logic(struct Game *game, struct GamestateResources* data) {
 
 		}
 
-	if (rand()%(int)(fmax(0,(200/((data->speed+1)/2)))+1)==0) {
+	if (data->timetospawn<=0) {
 		PrintConsole(game, "yay");
 
 		data->persons[data->numpersons].active = true;
@@ -251,7 +258,11 @@ void Gamestate_Logic(struct Game *game, struct GamestateResources* data) {
 		data->persons[data->numpersons].x = 320;
 		data->persons[data->numpersons].y = rand()%70 + 60 + 25;
 		data->numpersons++;
+
+		data->timetospawn = (rand()/(float)RAND_MAX)*120 + 30 - data->speed*2;
+		PrintConsole(game, "speed %f timetospawn %d", data->speed, data->timetospawn);
 	}
+	data->timetospawn--;
 
 	if (data->numpersons >= 1024) {
 		data->numpersons = 0;
@@ -273,6 +284,8 @@ void Gamestate_Logic(struct Game *game, struct GamestateResources* data) {
 				data->pushers[data->numpushers].b = data->persons[i].b;
 
 				data->numpushers++;
+
+				al_play_sample_instance(data->click);
 			}
 		}
 	}
@@ -381,6 +394,10 @@ void* Gamestate_Load(struct Game *game, void (*progress)(struct Game*)) {
 
 	data->timeline = TM_Init(game, "main");
 
+	data->clicks = al_load_sample(GetDataFilePath(game, "click.flac"));
+	data->click = al_create_sample_instance(data->clicks);
+	al_attach_sample_instance_to_mixer(data->click, game->audio.fx);
+
 	data->huginn = CreateCharacter(game, "huginn");
 	RegisterSpritesheet(game, data->huginn, "huginn");
 	RegisterSpritesheet(game, data->huginn, "walk");
@@ -393,6 +410,17 @@ void Gamestate_Unload(struct Game *game, struct GamestateResources* data) {
 	// Called when the gamestate library is being unloaded.
 	// Good place for freeing all allocated memory and resources.
 	al_destroy_font(data->font);
+	al_destroy_font(data->smallfont);
+	al_destroy_sample_instance(data->click);
+	al_destroy_sample(data->clicks);
+	DestroyCharacter(game, data->huginn);
+	al_destroy_bitmap(data->bg);
+	al_destroy_bitmap(data->clouds);
+	al_destroy_bitmap(data->fg);
+	al_destroy_bitmap(data->pendo);
+	al_destroy_bitmap(data->person);
+	al_destroy_bitmap(data->pusher);
+	TM_Destroy(data->timeline);
 	free(data);
 }
 
